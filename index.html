@@ -129,6 +129,7 @@
   /* visibilidad por modo */
   #proyView,#fuentesView,#finanzasView,#carteraView,#agendasView,#consView{display:none}
   body.m-consultores #consView{display:block}
+  body.m-setters .solo-closers{display:none}
   body.m-consultores .fld.daily,body.m-consultores #seg{display:none}
   /* Consultores (aislado) */
   .cscell{cursor:pointer;font-weight:800;font-size:15px;transition:color .15s}
@@ -241,6 +242,8 @@
     <div class="card"><div class="label" id="kLbl2"></div><div class="val" id="kVal2">0</div><div class="delta" id="kSub2"></div></div>
     <div class="card"><div class="label" id="kLbl3"></div><div class="val" id="kVal3">0</div><div class="delta" id="kSub3"></div></div>
     <div class="card"><div class="label" id="kLbl4"></div><div class="val" id="kVal4">0</div><div class="delta" id="kSub4"></div></div>
+    <div class="card solo-closers"><div class="label" id="kLbl5"></div><div class="val" id="kVal5">0</div><div class="delta" id="kSub5"></div></div>
+    <div class="card solo-closers"><div class="label" id="kLbl6"></div><div class="val"><span class="cur">$ </span><span id="kVal6">0</span></div><div class="delta" id="kSub6"></div></div>
   </div>
 
   <div class="card" id="confCard">
@@ -839,6 +842,11 @@ function renderClosers(data){
   setKPI(2,'Asistencias',asist,0,pctStr(asist,agendas)+' de las agendas');
   setKPI(3,'Ofertas presentadas',ofertas,0,pctStr(ofertas,asist)+' de asistencias');
   setKPI(4,'Cierres',cierres,0,cieCon+' contado · '+cieRes+' reserva · '+cieSeg+' seg.');
+  // ventas totales = contado + reserva/abonos + seguimientos · ticket = recaudo / ventas
+  const ventasTot=cieCon+cieRes+cieSeg;
+  const ticket=ventasTot>0?Math.round(recaudo/ventasTot):0;
+  setKPI(5,'Ventas totales',ventasTot,0,cieCon+' contado · '+cieRes+' abono/reserva · '+cieSeg+' seguimiento','up');
+  setKPI(6,'Ticket promedio',ticket,0,ventasTot?('recaudo ÷ '+ventasTot+' ventas'):'sin ventas en el periodo');
   // hero sub
   const cumpl=recObj>0?Math.round(recaudo/recObj*100):null, prev=sum(prevPeriod(),'recaudo');
   let parts=[]; if(cumpl!==null)parts.push((cumpl>=100?'✔ ':'')+cumpl+'% de la meta');
@@ -846,12 +854,12 @@ function renderClosers(data){
   const s0=document.getElementById('kSub0'); s0.className='delta '+(cumpl!==null?(cumpl>=100?'up':(cumpl>=70?'warn':'down')):''); s0.textContent=parts.join('   ·   ');
 
   document.getElementById('tblTitle').textContent='Comparativo por closer';
-  document.getElementById('thead').innerHTML='<tr><th>Closer</th><th>Agendas</th><th>Asistencias</th><th>Ofertas</th><th>C. Contado</th><th>C. Reserva</th><th>C. Seguim.</th><th>% Cierre</th><th>Recaudo</th><th>% Meta</th></tr>';
+  document.getElementById('thead').innerHTML='<tr><th>Closer</th><th>Agendas</th><th>Asistencias</th><th>Ofertas</th><th>C. Contado</th><th>C. Reserva</th><th>C. Seguim.</th><th>Ventas</th><th>% Cierre</th><th>Recaudo</th><th>Ticket prom.</th><th>% Meta</th></tr>';
   const by={}; data.forEach(r=>{const b=by[r.who]||(by[r.who]={agendas:0,asist:0,ofertas:0,cieCon:0,cieRes:0,cieSeg:0,recaudo:0,recaudoObj:0});
     ['agendas','asist','ofertas','cieCon','cieRes','cieSeg','recaudo','recaudoObj'].forEach(k=>b[k]+=r[k]);});
   const list=Object.entries(by).map(([n,v])=>({n,...v})).sort((a,b)=>b.recaudo-a.recaudo);
   const tb=document.getElementById('tbody'), tf=document.getElementById('tfoot');
-  if(!list.length){tb.innerHTML='<tr><td colspan="10" class="empty">Sin datos en el periodo.</td></tr>';tf.innerHTML='';renderFunnel([]);return;}
+  if(!list.length){tb.innerHTML='<tr><td colspan="12" class="empty">Sin datos en el periodo.</td></tr>';tf.innerHTML='';renderFunnel([]);return;}
   const clsC=p=>p===null?'':(p>=100?'g':(p<70?'b':'w')), clsK=p=>p===null?'':(p>=50?'g':(p<25?'b':'w'));
   tb.innerHTML=list.map((t,i)=>{
     const ini=t.n.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
@@ -860,15 +868,21 @@ function renderClosers(data){
       <td>${t.agendas}</td><td>${t.asist}<span class="sub2">${pctStr(t.asist,t.agendas)} asist.</span></td>
       <td>${t.ofertas}<span class="sub2">${pctStr(t.ofertas,t.asist)} oferta</span></td>
       <td>${t.cieCon}</td><td>${t.cieRes}</td><td>${t.cieSeg}</td>
+      <td class="rec">${cie}</td>
       <td><span class="pct ${clsK(pcie)}">${pcie===null?'—':pcie+'%'}</span></td>
-      <td class="rec">$${fmtCOP(t.recaudo)}</td><td><span class="pct ${clsC(cumpl)}">${cumpl===null?'—':cumpl+'%'}</span></td></tr>`;
+      <td class="rec">$${fmtCOP(t.recaudo)}</td>
+      <td>${cie>0?'$'+fmtCOP(Math.round(t.recaudo/cie)):'—'}</td>
+      <td><span class="pct ${clsC(cumpl)}">${cumpl===null?'—':cumpl+'%'}</span></td></tr>`;
   }).join('');
   const T=k=>list.reduce((s,x)=>s+x[k],0), tCie=T('cieCon')+T('cieRes')+T('cieSeg');
   const tCumpl=T('recaudoObj')>0?Math.round(T('recaudo')/T('recaudoObj')*100):null, tPcie=T('ofertas')>0?Math.round(tCie/T('ofertas')*100):null;
   tf.innerHTML=`<tr><td>Total</td><td>${T('agendas')}</td><td>${T('asist')}<span class="sub2">${pctStr(T('asist'),T('agendas'))} asist.</span></td>
     <td>${T('ofertas')}<span class="sub2">${pctStr(T('ofertas'),T('asist'))} oferta</span></td>
     <td>${T('cieCon')}</td><td>${T('cieRes')}</td><td>${T('cieSeg')}</td>
-    <td>${tPcie===null?'—':tPcie+'%'}</td><td class="rec">$${fmtCOP(T('recaudo'))}</td><td>${tCumpl===null?'—':tCumpl+'%'}</td></tr>`;
+    <td class="rec">${tCie}</td>
+    <td>${tPcie===null?'—':tPcie+'%'}</td><td class="rec">$${fmtCOP(T('recaudo'))}</td>
+    <td class="rec">${tCie>0?'$'+fmtCOP(Math.round(T('recaudo')/tCie)):'—'}</td>
+    <td>${tCumpl===null?'—':tCumpl+'%'}</td></tr>`;
 
   renderFunnel([{n:'Agendas nuevas',v:agendas,base:null},{n:'Asistencias',v:asist,base:agendas},{n:'Ofertas presentadas',v:ofertas,base:asist},{n:'Cierres',v:cierres,base:ofertas}]);
 }
