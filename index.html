@@ -458,7 +458,7 @@ const CLOSERS=[
 const CLOSER_GID="824958696"; // pestaña "KPI´S DIARIOS CLOSER ..." (Google Sheet; en el Excel: "Kpi Diario Closer")
 const SETTERS=[
   {name:"Natalia Castiblanco", xlsx:"1dqdTZLrmFTcyplp5Wbi7qxz5FIP936OA"},
-  {name:"Paula Fernández",     xlsx:"15zAWB_aJQAxlmSs0fBqFVLozoNb9kaIX", split:{from:new Date(2026,6,18), to:"Eduardo"}}, // archivo "TRACKER 2026 SETTER Eduardo Rojas" (heredado de Paula): Paula → Eduardo desde el sáb 18/07/2026
+  {name:"Eduardo Rojas",       xlsx:"15zAWB_aJQAxlmSs0fBqFVLozoNb9kaIX", since:new Date(2026,6,18)}, // archivo heredado de Paula: solo cuenta desde el sáb 18/07/2026, cuando entró Eduardo
   {name:"Carlos Pineda",       xlsx:"1wIJnlYbb1v-sKw_3fyHUR88x7GuAqfKz"},
 ];
 const SETTER_GID="0"; // pestaña diaria (Google Sheet; en el Excel: "DIARIO")
@@ -579,7 +579,8 @@ function parseSetter(name, txt, cfg){
     // limpiar canal "CONFIRMACIONES (HOY)" del desglose (no es fuente de agenda)
     delete ch["CONFIRMACIONES (HOY)"];
     const dd=new Date(y,+m[2]-1,+m[1]);
-    const who=(cfg&&cfg.split&&dd>=cfg.split.from)?cfg.split.to:name; // transición por fecha (Paula→Eduardo), sin relabelear el histórico
+    if(cfg&&cfg.since&&dd<cfg.since) continue; // ej. Eduardo: lo anterior del archivo es de Paula
+    const who=(cfg&&cfg.split&&dd>=cfg.split.from)?cfg.split.to:name; // transición por fecha, sin relabelear el histórico
     out.push({date:dd, who, conseguidas, asistidas, ofertadas, cerradas, recaudo, ch,
       programadas:num(rPr&&rPr[v]), confirmadas:num(rCf&&rCf[v]), asistieron:num(rSh&&rSh[v]), ofrecieron:num(rOfr&&rOfr[v])});
   }
@@ -730,7 +731,7 @@ function applyMode(){
     const sel=document.getElementById('pers'); sel.innerHTML='<option value="">Todos</option>';
     let persNames;
     if(MODE==='closers'){ persNames=CLOSERS.map(t=>t.name); }
-    else { persNames=SETTERS.map(t=>t.name); SETTERS.forEach(t=>{if(t.split&&t.split.to&&!persNames.includes(t.split.to))persNames.push(t.split.to);}); } // incluye Eduardo
+    else { persNames=SETTERS.map(t=>t.name); SETTERS.forEach(t=>{if(t.split&&t.split.to&&!persNames.includes(t.split.to))persNames.push(t.split.to);}); } // incluye a quien recibe un split
     persNames.forEach(n=>{const o=document.createElement('option');o.value=n;o.textContent=n;sel.appendChild(o);});
     setRange('tri'); document.getElementById('mes').value='';
     setStatus(); render();
