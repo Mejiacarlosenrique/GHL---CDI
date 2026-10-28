@@ -79,6 +79,14 @@
   h2{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink);margin:0 0 3px;font-weight:800}
   .h2sub{font-size:12px;color:var(--faint);margin-bottom:16px}
   svg{display:block;width:100%;height:auto;overflow:visible}
+  .chartwrap{position:relative;touch-action:pan-y}
+  .chartwrap svg{cursor:crosshair}
+  .ctip{position:absolute;top:0;left:0;pointer-events:none;opacity:0;transform:translate(-50%,-115%);transition:opacity .15s;
+    background:rgba(14,14,14,.96);border:1px solid rgba(250,89,0,.55);border-radius:10px;padding:7px 11px;white-space:nowrap;
+    box-shadow:0 10px 26px rgba(0,0,0,.55);z-index:5}
+  .ctip.on{opacity:1}
+  .ctip b{display:block;font-size:15px;font-weight:800;color:#fff;font-variant-numeric:tabular-nums}
+  .ctip span{font-size:11px;color:var(--muted)}
   .xlab{display:flex;justify-content:space-between;margin-top:8px}
   .xlab span{font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums}
 
@@ -294,7 +302,7 @@
     <div class="card">
       <h2 id="chartTitle">Recaudo por mes</h2>
       <div class="h2sub" id="chartSub">pesos COP</div>
-      <svg id="chart" viewBox="0 0 620 240" preserveAspectRatio="none"></svg>
+      <div class="chartwrap"><svg id="chart" viewBox="0 0 620 240" preserveAspectRatio="none"></svg><div class="ctip" id="ctip"></div></div>
       <div class="xlab" id="xlab"></div>
     </div>
   </div>
@@ -1121,6 +1129,21 @@ function renderChart(data){
     <path d="${area}" fill="url(#fill)"/>
     <path d="${line}" fill="none" stroke="url(#stroke)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
     ${P.map((p,i)=>`<circle cx="${p[0]}" cy="${p[1]}" r="${i===P.length-1?5:(daily?2.2:3)}" fill="${i===P.length-1?'#E83F00':'#fff'}" ${i===P.length-1?'filter="url(#glow)"':''}><title>${pts[i].tip}: $${fmtCOP(pts[i].v)}</title></circle>`).join('')}`;
+  // etiqueta al pasar el mouse / tocar: muestra el punto más cercano (no hace falta atinarle exacto)
+  svg.insertAdjacentHTML('beforeend',`<line id="cguide" y1="${pad}" y2="${H-pad}" stroke="rgba(255,255,255,.25)" stroke-dasharray="3 4" opacity="0"/><circle id="cdot" r="6" fill="#FA5900" stroke="#fff" stroke-width="2" opacity="0"/>`);
+  const tip=document.getElementById('ctip'), guide=svg.querySelector('#cguide'), dot=svg.querySelector('#cdot');
+  const show=e=>{
+    const r=svg.getBoundingClientRect(), vx=(e.clientX-r.left)/r.width*W;
+    let i=0; P.forEach((p,k)=>{if(Math.abs(p[0]-vx)<Math.abs(P[i][0]-vx))i=k;});
+    const [x,y]=P[i];
+    guide.setAttribute('x1',x); guide.setAttribute('x2',x); guide.setAttribute('opacity',1);
+    dot.setAttribute('cx',x); dot.setAttribute('cy',y); dot.setAttribute('opacity',1);
+    tip.innerHTML=`<b>$${fmtCOP(pts[i].v)}</b><span>${daily?pts[i].tip:pts[i].tip+' (mes)'}</span>`;
+    const px=Math.min(Math.max(x/W*r.width,60),r.width-60);
+    tip.style.left=px+'px'; tip.style.top=(y/H*r.height)+'px'; tip.classList.add('on');
+  };
+  const hide=()=>{tip.classList.remove('on'); guide.setAttribute('opacity',0); dot.setAttribute('opacity',0);};
+  svg.onpointermove=show; svg.onpointerdown=show; svg.onpointerleave=hide;
   const everyX=daily?Math.ceil(pts.length/10):1; // en vista diaria, solo algunas etiquetas para que se lean
   xl.innerHTML=pts.map((p,i)=>`<span>${i%everyX===0||i===pts.length-1?p.lbl:''}</span>`).join('');
 }
