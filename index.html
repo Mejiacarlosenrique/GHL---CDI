@@ -209,7 +209,8 @@
       </div>
     </div>
     <div class="modeseg" id="modeseg">
-      <button data-m="closers" class="on">Closers</button><button data-m="setters">Setters</button><button data-m="proyeccion">Proyección</button><button data-m="fuentes">Fuentes</button><button data-m="finanzas">Finanzas</button><button data-m="cartera">Cartera</button><button data-m="agendas">Agendas</button><button data-m="consultores">Consultores</button>
+      <button data-m="closers" class="on">Closers</button><button data-m="setters">Setters</button><button data-m="fuentes">Fuentes</button>
+      <!-- pestañas ocultas por ahora (su código sigue abajo): proyeccion, finanzas, cartera, agendas, consultores -->
     </div>
   </div>
 
@@ -711,7 +712,8 @@ function loadProyFuentes(){
 }
 function fetchData(){
   const btn=document.getElementById('refresh'); btn.classList.add('spin');
-  return Promise.all([loadMode('closers'),loadMode('setters'),loadProyFuentes(),loadFinanzas(),loadAgendas(),loadConsultores()]).then(()=>{
+  // solo se cargan los datos de las pestañas visibles (Closers, Setters, Fuentes)
+  return Promise.all([loadMode('closers'),loadMode('setters'),loadProyFuentes()]).then(()=>{
     if(!built){buildFilters();built=true;applyMode();} // SOLO en la carga inicial se fija el filtro por defecto
     else rerenderCurrent();                            // en auto-refrescos: re-dibuja con datos frescos SIN tocar el filtro del usuario
   }).finally(()=>btn.classList.remove('spin'));
