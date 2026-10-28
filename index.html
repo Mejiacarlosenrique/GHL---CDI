@@ -52,6 +52,12 @@
   @keyframes spin{to{transform:rotate(360deg)}}
 
   .kpis{display:grid;grid-template-columns:1.7fr 1fr 1fr 1fr 1fr;gap:14px;margin-bottom:16px}
+  .quin{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:12px}
+  .quin>div{border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+  .quin .val{font-size:24px}
+  .quin dl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:10px 0 0;font-size:12.5px}
+  .quin dt{color:var(--muted)} .quin dd{margin:0;text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+  @media(max-width:640px){.quin{grid-template-columns:1fr}}
   .card{background:var(--glass);border:1px solid var(--line);border-radius:18px;padding:18px 20px;position:relative;overflow:hidden;backdrop-filter:blur(6px)}
   .card::before{content:"";position:absolute;inset:0;border-radius:18px;padding:1px;background:linear-gradient(135deg,rgba(255,255,255,.14),transparent 40%);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none}
   .label{font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--faint);font-weight:700}
@@ -311,6 +317,11 @@
 
   <div id="fuentesView">
     <div class="kpis" id="fuKpis"></div>
+    <div class="card" id="fuQuin" style="display:none;margin-bottom:16px">
+      <h2>Por quincena</h2>
+      <div class="h2sub">el mes se llevó en dos cortes</div>
+      <div class="quin" id="fuQuinBody"></div>
+    </div>
     <div class="card">
       <h2>Ventas por fuente — <span id="fuMesLbl"></span></h2>
       <div class="h2sub">inversión, recaudo, ROAS y ventas por cada fuente</div>
@@ -644,18 +655,19 @@ function parseFuentes(txt){
   [...new Set(blocks.map(b=>b.mo))].forEach(mo=>{
     const bs=blocks.filter(b=>b.mo===mo), name=MESNAME[mo-1];
     if(bs.length===1){months.push({key:mo,label:name}); data[mo]=bs[0]; return;}
-    // mes dividido en quincenas: una opción por quincena + el mes completo (sumado)
+    // mes dividido en quincenas: se muestra el mes completo (sumado) y, aparte, cada quincena
     const fin=new Date(2026,mo,0).getDate();
-    bs.slice(0,2).forEach((b,i)=>{const k=mo+(i?'b':'a'); months.push({key:k,label:`${name} · ${i?'16–'+fin:'1–15'}`}); data[k]=b;});
-    months.push({key:mo,label:`${name} · mes completo`}); data[mo]=mergeFuentes(bs);
+    months.push({key:mo,label:name});
+    data[mo]=mergeFuentes(bs);
+    data[mo].parts=bs.slice(0,2).map((b,i)=>({...b,label:i?`16–${fin} ${name.toLowerCase()}`:`1–15 ${name.toLowerCase()}`}));
   });
   return {months, data};
 }
 function mergeFuentes(bs){
   const by={}, order=[];
-  bs.forEach(b=>b.sources.forEach(s=>{
-    const m=by[s.name]||(order.push(s.name),by[s.name]={name:s.name,inv:0,rec:0,ventas:0,etapa:''});
-    m.inv+=s.inv; m.rec+=s.rec; m.ventas+=s.ventas; if(s.etapa)m.etapa=s.etapa; // etapa: la más reciente
+  bs.forEach((b,i)=>b.sources.forEach(s=>{
+    const m=by[s.name]||(order.push(s.name),by[s.name]={name:s.name,inv:0,rec:0,ventas:0,etapa:'',recP:bs.map(()=>0)});
+    m.inv+=s.inv; m.rec+=s.rec; m.ventas+=s.ventas; m.recP[i]+=s.rec; if(s.etapa)m.etapa=s.etapa; // etapa: la más reciente
   }));
   const sum=(f,k)=>bs.reduce((a,b)=>a+((b[f]&&b[f][k])||0),0);
   const total={inv:sum('total','inv'), rec:sum('total','rec')}; total.roas=total.inv?total.rec/total.inv:0;
@@ -1138,6 +1150,7 @@ function renderProy(key){
 function renderFuentes(key){
   const kp=document.getElementById('fuKpis'), tb=document.getElementById('fuTbl'), bars=document.getElementById('fuBars');
   const sec=FUENTES&&FUENTES.data[key];
+  const qc=document.getElementById('fuQuin'); qc.style.display='none';
   if(!sec||!sec.sources.length){kp.innerHTML='<div class="empty">Sin datos de fuentes.</div>';tb.innerHTML='';bars.innerHTML='';return;}
   const mm=FUENTES.months.find(m=>String(m.key)===String(key));
   document.getElementById('fuMesLbl').textContent=mm?mm.label:'';
@@ -1151,13 +1164,27 @@ function renderFuentes(key){
     <div class="card"><div class="label">ROAS</div><div class="val">${roas.toLocaleString('es-CO',{maximumFractionDigits:1})}</div><div class="delta">recaudo ÷ inversión</div></div>
     <div class="card"><div class="label">Ventas</div><div class="val">${totV}</div><div class="delta">cierres del periodo</div></div>`;
   const et=e=>{const l=e.toLowerCase();return l.includes('proceso')?'proc':(l?'ok':'');};
+  const fx=n=>n?n.toLocaleString('es-CO',{maximumFractionDigits:1}):'—';
+  const P=sec.parts||null; // mes dividido en quincenas
+  if(P){
+    qc.style.display='';
+    document.getElementById('fuQuinBody').innerHTML=P.map(b=>{
+      const rec=b.total?b.total.rec:b.sources.reduce((a,x)=>a+x.rec,0), inv=b.total?b.total.inv:b.sources.reduce((a,x)=>a+x.inv,0);
+      const ven=b.sources.reduce((a,x)=>a+x.ventas,0);
+      return `<div><div class="label">${b.label}</div><div class="val">$${fmtCOP(rec)}</div>
+        <dl>${b.meta?`<dt>Meta</dt><dd>$${fmtCOP(b.meta)} · ${pctStr(rec,b.meta)}</dd>`:''}
+        <dt>Inversión</dt><dd>$${fmtCOP(inv)}</dd><dt>ROAS</dt><dd>${fx(inv?rec/inv:0)}</dd><dt>Ventas</dt><dd>${ven}</dd></dl></div>`;}).join('');
+  }
+  const qTh=P?P.map(b=>`<th>${b.label.split(' ')[0]}</th>`).join(''):'';
+  const qTd=x=>P?P.map((b,i)=>`<td>${x.recP&&x.recP[i]?'$'+fmtCOP(x.recP[i]):'—'}</td>`).join(''):'';
+  const qTf=P?P.map(b=>`<td>$${fmtCOP(b.total?b.total.rec:0)}</td>`).join(''):'';
   const cart=sec.cartera;
-  const cartRow=(cart&&(cart.rec||cart.roas||cart.inv))?`<tr class="cartera"><td>Cartera</td><td>${cart.inv?'$'+fmtCOP(cart.inv):'—'}</td><td class="rec">${cart.rec?'$'+fmtCOP(cart.rec):'—'}</td><td>${cart.roas?cart.roas.toLocaleString('es-CO',{maximumFractionDigits:1}):'—'}</td><td>${cart.ventas||'—'}</td><td>${cart.pct||'—'}</td><td>—</td></tr>`:'';
-  tb.innerHTML=`<thead><tr><th>Fuente</th><th>Inversión</th><th>Recaudo</th><th>ROAS</th><th>#Ventas</th><th>%</th><th>Etapa</th></tr></thead><tbody>`+
-    s.map(x=>`<tr><td>${x.name}</td><td>${x.inv?'$'+fmtCOP(x.inv):'—'}</td><td class="rec">${x.rec?'$'+fmtCOP(x.rec):'—'}</td>
+  const cartRow=(cart&&(cart.rec||cart.roas||cart.inv))?`<tr class="cartera"><td>Cartera</td><td>${cart.inv?'$'+fmtCOP(cart.inv):'—'}</td>${P?P.map(()=>'<td>—</td>').join(''):''}<td class="rec">${cart.rec?'$'+fmtCOP(cart.rec):'—'}</td><td>${cart.roas?cart.roas.toLocaleString('es-CO',{maximumFractionDigits:1}):'—'}</td><td>${cart.ventas||'—'}</td><td>${cart.pct||'—'}</td><td>—</td></tr>`:'';
+  tb.innerHTML=`<thead><tr><th>Fuente</th><th>Inversión</th>${qTh}<th>Recaudo${P?' mes':''}</th><th>ROAS</th><th>#Ventas</th><th>%</th><th>Etapa</th></tr></thead><tbody>`+
+    s.map(x=>`<tr><td>${x.name}</td><td>${x.inv?'$'+fmtCOP(x.inv):'—'}</td>${qTd(x)}<td class="rec">${x.rec?'$'+fmtCOP(x.rec):'—'}</td>
       <td>${x.roas?x.roas.toLocaleString('es-CO',{maximumFractionDigits:1}):'—'}</td><td>${x.ventas||'—'}</td><td>${x.pct||'—'}</td>
       <td><span class="etapa ${et(x.etapa)}">${x.etapa||'—'}</span></td></tr>`).join('')+cartRow+
-    `</tbody><tfoot><tr><td>Total</td><td>$${fmtCOP(totInv)}</td><td class="rec">$${fmtCOP(totRec)}</td><td>${roas.toLocaleString('es-CO',{maximumFractionDigits:1})}</td><td>${totV}</td><td></td><td></td></tr></tfoot>`;
+    `</tbody><tfoot><tr><td>Total</td><td>$${fmtCOP(totInv)}</td>${qTf}<td class="rec">$${fmtCOP(totRec)}</td><td>${roas.toLocaleString('es-CO',{maximumFractionDigits:1})}</td><td>${totV}</td><td></td><td></td></tr></tfoot>`;
   // barras recaudo por fuente
   const sorted=[...s].filter(x=>x.rec>0).sort((a,b)=>b.rec-a.rec), top=sorted.length?sorted[0].rec:1;
   bars.innerHTML=sorted.map((x,i)=>`<div class="fubar">
