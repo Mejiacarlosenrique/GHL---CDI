@@ -4,26 +4,33 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Tracker High Ticket CDI</title>
+<meta name="theme-color" content="#070707">
+<link rel="icon" type="image/png" href="favicon.png?v=1">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=1">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <style>
   :root{
-    --bg:#0b0a10; --bg2:#13111b; --ink:#f4f1ff; --muted:#a49db8; --faint:#726b86;
+    /* paleta Círculo de Importadores: negro + naranja fuego + brasa + dorado */
+    --bg:#070707; --bg2:#0E0E0E; --ink:#F8F5F2; --muted:#ABA49E; --faint:#79736D;
     --line:rgba(255,255,255,.08); --glass:rgba(255,255,255,.035); --glass2:rgba(255,255,255,.05);
-    --c1:#ff6a2b; --c2:#ff2e8b; --c3:#ffb020; --good:#2fe08a; --bad:#ff5a5a; --warn:#ffb020;
-    --font:ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --c1:#FA5900; --c2:#E83F00; --c3:#EFBC2A; --good:#2fe08a; --bad:#ff5a5a; --warn:#EFBC2A;
+    --font:"Plus Jakarta Sans",ui-sans-serif,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
   }
   *{box-sizing:border-box} html,body{margin:0}
   body{
     font-family:var(--font); color:var(--ink); min-height:100vh;
     padding:24px clamp(16px,3.5vw,40px) 44px;
     background:
-      radial-gradient(900px 500px at 12% -8%, rgba(255,106,43,.20), transparent 60%),
-      radial-gradient(800px 520px at 100% 0%, rgba(255,46,139,.16), transparent 55%),
+      radial-gradient(900px 500px at 12% -8%, rgba(250,89,0,.22), transparent 60%),
+      radial-gradient(800px 520px at 100% 0%, rgba(239,188,42,.10), transparent 55%),
       linear-gradient(180deg,var(--bg2),var(--bg));
     background-attachment:fixed; -webkit-font-smoothing:antialiased;
   }
   .top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:18px;margin-bottom:18px}
   .brand{display:flex;align-items:center;gap:13px}
-  .mark{width:44px;height:44px;border-radius:13px;background:linear-gradient(135deg,var(--c1),var(--c2));display:grid;place-items:center;color:#fff;font-weight:900;font-size:21px;box-shadow:0 8px 24px rgba(255,46,139,.35)}
+  .mark{width:44px;height:44px;display:grid;place-items:center;filter:drop-shadow(0 6px 16px rgba(250,89,0,.5))}
+  .mark img{width:100%;height:100%}
   h1{margin:0;font-size:19px;font-weight:800;letter-spacing:-.02em}
   .sub{font-size:12px;color:var(--muted);margin-top:3px;display:flex;align-items:center;gap:7px}
   .live{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--good)}
@@ -35,7 +42,7 @@
   .modeseg{display:flex;background:var(--glass);border:1px solid var(--line);border-radius:13px;padding:4px;gap:3px}
   .modeseg button{font:inherit;font-size:14px;font-weight:800;color:var(--muted);background:none;border:0;padding:9px 22px;border-radius:9px;cursor:pointer;transition:.2s;letter-spacing:.01em}
   .modeseg button:hover{color:var(--ink)}
-  .modeseg button.on{background:linear-gradient(135deg,var(--c1),var(--c2));color:#fff;box-shadow:0 6px 18px rgba(255,46,139,.4)}
+  .modeseg button.on{background:linear-gradient(135deg,var(--c1),var(--c2));color:#fff;box-shadow:0 6px 18px rgba(232,63,0,.4)}
 
   .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:16px}
   .fld{display:flex;flex-direction:column;gap:5px}
@@ -45,7 +52,7 @@
   .seg{display:flex;background:var(--glass);border:1px solid var(--line);border-radius:11px;padding:3px;gap:2px}
   .seg button{font:inherit;font-size:12.5px;font-weight:600;color:var(--muted);background:none;border:0;padding:7px 12px;border-radius:8px;cursor:pointer;transition:.2s;white-space:nowrap}
   .seg button:hover{color:var(--ink)}
-  .seg button.on{background:linear-gradient(135deg,var(--c1),var(--c2));color:#fff;box-shadow:0 4px 14px rgba(255,46,139,.35)}
+  .seg button.on{background:linear-gradient(135deg,var(--c1),var(--c2));color:#fff;box-shadow:0 4px 14px rgba(232,63,0,.35)}
   .refbtn{font:inherit;font-size:16px;line-height:1;color:var(--ink);background:var(--glass);border:1px solid var(--line);border-radius:11px;width:38px;height:37px;cursor:pointer;display:grid;place-items:center;transition:.2s}
   .refbtn:hover{border-color:var(--c1);color:var(--c1)}
   .refbtn.spin i{display:inline-block;animation:spin .7s linear infinite}
@@ -61,7 +68,7 @@
   .card{background:var(--glass);border:1px solid var(--line);border-radius:18px;padding:18px 20px;position:relative;overflow:hidden;backdrop-filter:blur(6px)}
   .card::before{content:"";position:absolute;inset:0;border-radius:18px;padding:1px;background:linear-gradient(135deg,rgba(255,255,255,.14),transparent 40%);-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none}
   .label{font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--faint);font-weight:700}
-  .hero{background:radial-gradient(420px 200px at 100% 0%, rgba(255,106,43,.26), transparent 60%),var(--glass)}
+  .hero{background:radial-gradient(420px 200px at 100% 0%, rgba(250,89,0,.26), transparent 60%),var(--glass)}
   .hero .big{font-size:clamp(24px,3.1vw,38px);font-weight:900;letter-spacing:-.02em;line-height:1.05;margin-top:12px;background:linear-gradient(135deg,#fff,#ffd9c4 45%,var(--c3));-webkit-background-clip:text;background-clip:text;color:transparent;font-variant-numeric:tabular-nums}
   .hero .cur{font-size:15px;font-weight:700;color:var(--muted);-webkit-text-fill-color:var(--muted)}
   .val{font-size:30px;font-weight:800;letter-spacing:-.02em;margin-top:10px;font-variant-numeric:tabular-nums}
@@ -89,7 +96,7 @@
   .sub2{display:block;font-size:10px;color:var(--faint);font-weight:600;margin-top:3px}
   .rec{font-weight:800;font-size:13.5px}
   .pct{font-weight:700;padding:3px 9px;border-radius:99px;font-size:11.5px;background:rgba(255,255,255,.07);color:var(--muted)}
-  .pct.g{color:var(--good);background:rgba(47,224,138,.12)} .pct.b{color:var(--bad);background:rgba(255,90,90,.12)} .pct.w{color:var(--warn);background:rgba(255,176,32,.12)}
+  .pct.g{color:var(--good);background:rgba(47,224,138,.12)} .pct.b{color:var(--bad);background:rgba(255,90,90,.12)} .pct.w{color:var(--warn);background:rgba(239,188,42,.12)}
   .tbl tfoot td{padding:14px 10px;border-top:2px solid var(--line);font-weight:800;color:var(--ink)}
   .tbl tfoot .rec{color:var(--c3);font-size:14px}
   .empty{color:var(--faint);font-size:13px;padding:20px 0;text-align:center}
@@ -160,7 +167,7 @@
   .agpill{font-weight:800;font-size:11px;padding:3px 9px;border-radius:99px;white-space:nowrap}
   .agpill.ok{color:var(--good);background:rgba(47,224,138,.13)}
   .agpill.bad{color:var(--bad);background:rgba(255,90,90,.13)}
-  .agpill.warn{color:var(--warn);background:rgba(255,176,32,.13)}
+  .agpill.warn{color:var(--warn);background:rgba(239,188,42,.13)}
   body.m-proyeccion .fld.monthly,body.m-fuentes .fld.monthly{display:flex}
   body.m-cartera .fld.cartera{display:flex}
   /* Finanzas (aislado) */
@@ -168,10 +175,10 @@
   .finclick:hover{transform:translateY(-2px)}
   #finTbl td.fincell{cursor:pointer} #finTbl td.fincell:hover{color:var(--c3)}
   #finEstados{margin-bottom:16px}
-  .tbl tr.grouprow td{background:linear-gradient(90deg,rgba(255,106,43,.22),rgba(255,46,139,.10));font-size:10.5px;text-transform:uppercase;letter-spacing:.09em;color:#ffd9c4;font-weight:800;padding:10px 12px;text-align:left;border-top:1px solid rgba(255,106,43,.35);border-bottom:1px solid var(--line)}
+  .tbl tr.grouprow td{background:linear-gradient(90deg,rgba(250,89,0,.22),rgba(232,63,0,.10));font-size:10.5px;text-transform:uppercase;letter-spacing:.09em;color:#ffd9c4;font-weight:800;padding:10px 12px;text-align:left;border-top:1px solid rgba(250,89,0,.35);border-bottom:1px solid var(--line)}
   .tbl tr.cartera td{color:var(--c3)} .tbl tr.cartera td:first-child{font-weight:800}
   .etapa{font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:rgba(255,255,255,.07);color:var(--muted)}
-  .etapa.ok{color:var(--good);background:rgba(47,224,138,.12)} .etapa.proc{color:var(--warn);background:rgba(255,176,32,.12)}
+  .etapa.ok{color:var(--good);background:rgba(47,224,138,.12)} .etapa.proc{color:var(--warn);background:rgba(239,188,42,.12)}
   .fubar{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
   .fubar:last-child{border-bottom:0}
   .funame{flex:1;min-width:0;font-weight:700;font-size:13px}
@@ -194,15 +201,7 @@
 <body class="m-closers">
   <div class="top">
     <div class="brand">
-      <div class="mark" style="background:#0b0a10;padding:6px;box-shadow:0 8px 24px rgba(238,106,53,.4)">
-        <svg viewBox="0 0 100 100" fill="none" width="100%" height="100%" aria-label="Círculo de Importadores">
-          <circle cx="50" cy="56" r="26" stroke="#ee6a35" stroke-width="15"/>
-          <path d="M42 33 C40 17 43 8 46 4 C44 15 49 23 51 31Z" fill="#ee6a35"/>
-          <path d="M53 31 C54 16 59 9 65 8 C58 17 60 25 61 33Z" fill="#ee6a35"/>
-          <circle cx="65" cy="37" r="5" fill="#0b0a10"/>
-          <circle cx="60" cy="32" r="2.3" fill="#ee6a35"/>
-        </svg>
-      </div>
+      <div class="mark"><img src="logo-circulo.png" alt="Círculo de Importadores" width="44" height="44"></div>
       <div>
         <h1>Tracker High Ticket CDI</h1>
         <div class="sub"><span class="live" id="status"><i></i><span id="statusTxt">conectando…</span></span></div>
@@ -504,8 +503,9 @@ function fetchTracker(t, gid, tab){
   return getText(gvizUrl(t.id,gid));
 }
 const rm=matchMedia('(prefers-reduced-motion:reduce)').matches;
-const grads=['linear-gradient(135deg,#ff6a2b,#ff2e8b)','linear-gradient(135deg,#ffb020,#ff6a2b)','linear-gradient(135deg,#7a5cff,#ff2e8b)','linear-gradient(135deg,#2fe08a,#12b5c9)','linear-gradient(135deg,#12b5c9,#7a5cff)','linear-gradient(135deg,#ff5a5a,#ffb020)','linear-gradient(135deg,#9b5cff,#12b5c9)'];
-const solid=['#ff6a2b','#ffb020','#7a5cff','#2fe08a','#12b5c9','#ff5a5a','#9b5cff'];
+// series: primero los tonos de marca Círculo (fuego, dorado, arena, bronce) y luego contrastes para distinguir personas
+const grads=['linear-gradient(135deg,#FF8A3D,#E83F00)','linear-gradient(135deg,#F7CF5A,#E6A817)','linear-gradient(135deg,#F2DCC0,#D9A877)','linear-gradient(135deg,#D9874A,#9A4A17)','linear-gradient(135deg,#2fe08a,#12b5c9)','linear-gradient(135deg,#ff6b6b,#E8331C)','linear-gradient(135deg,#12b5c9,#2f6fe0)'];
+const solid=['#FA5900','#EFBC2A','#E8CBA6','#B5652B','#2fe08a','#ff5a5a','#12b5c9'];
 
 // ================== CSV ==================
 function parseCSV(t){
@@ -1106,13 +1106,13 @@ function renderChart(data){
   const line=P.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
   const area=line+` L${xs(pts.length-1)} ${H-pad} L${pad} ${H-pad} Z`;
   svg.innerHTML=`<defs>
-    <linearGradient id="fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff6a2b" stop-opacity=".55"/><stop offset="1" stop-color="#ff2e8b" stop-opacity="0"/></linearGradient>
-    <linearGradient id="stroke" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffb020"/><stop offset="1" stop-color="#ff2e8b"/></linearGradient>
+    <linearGradient id="fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FA5900" stop-opacity=".55"/><stop offset="1" stop-color="#E83F00" stop-opacity="0"/></linearGradient>
+    <linearGradient id="stroke" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#EFBC2A"/><stop offset="1" stop-color="#E83F00"/></linearGradient>
     <filter id="glow"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs>
     ${[0,.25,.5,.75,1].map(g=>`<line x1="${pad}" x2="${W-pad}" y1="${pad+g*(H-2*pad)}" y2="${pad+g*(H-2*pad)}" stroke="rgba(255,255,255,.06)"/>`).join('')}
     <path d="${area}" fill="url(#fill)"/>
     <path d="${line}" fill="none" stroke="url(#stroke)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
-    ${P.map((p,i)=>`<circle cx="${p[0]}" cy="${p[1]}" r="${i===P.length-1?5:3}" fill="${i===P.length-1?'#ff2e8b':'#fff'}" ${i===P.length-1?'filter="url(#glow)"':''}/>`).join('')}`;
+    ${P.map((p,i)=>`<circle cx="${p[0]}" cy="${p[1]}" r="${i===P.length-1?5:3}" fill="${i===P.length-1?'#E83F00':'#fff'}" ${i===P.length-1?'filter="url(#glow)"':''}/>`).join('')}`;
   xl.innerHTML=pts.map(p=>`<span>${p.lbl}</span>`).join('');
 }
 
@@ -1152,7 +1152,7 @@ function renderProy(key){
   rec3.forEach((x,i)=>{const cx=pad+step*i+step/2,bw=Math.min(34,step*0.28);
     bars+=`<rect x="${(cx-bw-3).toFixed(1)}" y="${ys(x.meta).toFixed(1)}" width="${bw}" height="${(H-pad-ys(x.meta)).toFixed(1)}" fill="rgba(255,255,255,.18)" rx="3"><title>Meta ${x.label}: $${fmtCOP(x.meta)}</title></rect>`;
     bars+=`<rect x="${(cx+3).toFixed(1)}" y="${ys(x.real).toFixed(1)}" width="${bw}" height="${(H-pad-ys(x.real)).toFixed(1)}" fill="url(#pg)" rx="3"><title>Real ${x.label}: $${fmtCOP(x.real)}</title></rect>`;});
-  svg.innerHTML=`<defs><linearGradient id="pg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffb020"/><stop offset="1" stop-color="#ff2e8b"/></linearGradient></defs>
+  svg.innerHTML=`<defs><linearGradient id="pg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#EFBC2A"/><stop offset="1" stop-color="#E83F00"/></linearGradient></defs>
     ${[0,.25,.5,.75,1].map(g=>`<line x1="${pad}" x2="${W-pad}" y1="${pad+g*(H-2*pad)}" y2="${pad+g*(H-2*pad)}" stroke="rgba(255,255,255,.06)"/>`).join('')}${bars}`;
   document.getElementById('proyChartSub').innerHTML='barra clara = meta · barra de color = real';
   xl.innerHTML=rec3.map(x=>`<span>${x.label}</span>`).join('');
