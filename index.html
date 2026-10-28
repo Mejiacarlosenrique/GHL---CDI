@@ -626,18 +626,43 @@ function parseProy(txt){
 function parseFuentes(txt){
   const rows=parseCSV(txt);
   const MM={ENERO:1,FEBRERO:2,MARZO:3,ABRIL:4,MAYO:5,JUNIO:6,JULIO:7,AGOSTO:8,SEPTIEMBRE:9,OCTUBRE:10,NOVIEMBRE:11,DICIEMBRE:12};
-  const months=[], data={}; let cur=null;
+  // cada bloque de la hoja empieza con una fila de título: "OCTUBRE", "FUENTE OCTUBRE" u "OCTUBRE DESPUES DEL 15" (quincena)
+  const blocks=[]; let cur=null;
   rows.forEach(r=>{
-    const a=(r[0]||'').trim(); const au=a.toUpperCase().replace('FUENTE','').trim();
-    if(MM[au]){cur=MM[au]; if(!data[cur]){data[cur]={sources:[],total:null,cartera:null}; months.push({key:cur,label:MESNAME[cur-1]});} return;}
+    const a=(r[0]||'').trim(), au=a.toUpperCase().replace('FUENTE','').trim();
+    const mw=au.split(/\s+/)[0];
+    if(MM[mw] && r.slice(1).every(c=>!String(c).trim())){cur={mo:MM[mw],sources:[],total:null,cartera:null,meta:0}; blocks.push(cur); return;}
     if(!cur||!a||a.toUpperCase()==='FUENTE') return;
-    if(a.toUpperCase()==='TOTAL'){data[cur].total={inv:moneyNum(r[1]),rec:moneyNum(r[2]),roas:ratioNum(r[3])}; return;}
-    if(a.toUpperCase()==='CARTERA'){data[cur].cartera={inv:moneyNum(r[1]),rec:moneyNum(r[2]),roas:ratioNum(r[3]),ventas:parseInt(String(r[4]||'').replace(/[^0-9]/g,''))||0,pct:(r[5]||'').trim()}; return;}
+    if(a.toUpperCase()==='META'){cur.meta=moneyNum(r[1]); return;} // meta de recaudo del bloque, no es una fuente
+    if(a.toUpperCase()==='TOTAL'){cur.total={inv:moneyNum(r[1]),rec:moneyNum(r[2]),roas:ratioNum(r[3])}; return;}
+    if(a.toUpperCase().startsWith('CARTERA')){cur.cartera={inv:moneyNum(r[1]),rec:moneyNum(r[2]),roas:ratioNum(r[3]),ventas:parseInt(String(r[4]||'').replace(/[^0-9]/g,''))||0,pct:(r[5]||'').trim()}; return;}
     const inv=moneyNum(r[1]), rec=moneyNum(r[2]), ventas=parseInt(String(r[4]||'').replace(/[^0-9]/g,''))||0;
     if(!inv&&!rec&&!ventas) return;
-    data[cur].sources.push({name:a, inv, rec, roas:ratioNum(r[3]), ventas, pct:(r[5]||'').trim(), etapa:(r[6]||'').trim()});
+    cur.sources.push({name:a, inv, rec, roas:ratioNum(r[3]), ventas, pct:(r[5]||'').trim(), etapa:(r[6]||'').trim()});
+  });
+  const months=[], data={};
+  [...new Set(blocks.map(b=>b.mo))].forEach(mo=>{
+    const bs=blocks.filter(b=>b.mo===mo), name=MESNAME[mo-1];
+    if(bs.length===1){months.push({key:mo,label:name}); data[mo]=bs[0]; return;}
+    // mes dividido en quincenas: una opción por quincena + el mes completo (sumado)
+    const fin=new Date(2026,mo,0).getDate();
+    bs.slice(0,2).forEach((b,i)=>{const k=mo+(i?'b':'a'); months.push({key:k,label:`${name} · ${i?'16–'+fin:'1–15'}`}); data[k]=b;});
+    months.push({key:mo,label:`${name} · mes completo`}); data[mo]=mergeFuentes(bs);
   });
   return {months, data};
+}
+function mergeFuentes(bs){
+  const by={}, order=[];
+  bs.forEach(b=>b.sources.forEach(s=>{
+    const m=by[s.name]||(order.push(s.name),by[s.name]={name:s.name,inv:0,rec:0,ventas:0,etapa:''});
+    m.inv+=s.inv; m.rec+=s.rec; m.ventas+=s.ventas; if(s.etapa)m.etapa=s.etapa; // etapa: la más reciente
+  }));
+  const sum=(f,k)=>bs.reduce((a,b)=>a+((b[f]&&b[f][k])||0),0);
+  const total={inv:sum('total','inv'), rec:sum('total','rec')}; total.roas=total.inv?total.rec/total.inv:0;
+  const sources=order.map(n=>{const m=by[n]; return {...m, roas:m.inv?m.rec/m.inv:0, pct:total.rec?(m.rec/total.rec*100).toLocaleString('es-CO',{maximumFractionDigits:2})+'%':''};});
+  const cRec=sum('cartera','rec'), cVen=sum('cartera','ventas');
+  const cartera=(cRec||cVen)?{inv:0,rec:cRec,roas:total.inv?(total.rec+cRec)/total.inv:0,ventas:cVen,pct:''}:null;
+  return {sources,total,cartera,meta:bs.reduce((a,b)=>a+(b.meta||0),0)};
 }
 
 // ================== ESTADO / CARGA ==================
@@ -1121,10 +1146,10 @@ function renderFuentes(key){
   const totInv=sec.total?sec.total.inv:s.reduce((a,x)=>a+x.inv,0);
   const totV=s.reduce((a,x)=>a+x.ventas,0), roas=totInv>0?totRec/totInv:0;
   kp.innerHTML=`
-    <div class="card hero"><div class="label">Recaudo total</div><div class="big">$${fmtCOP(totRec)}</div><div class="delta">${mm?mm.label:''} · por fuente</div></div>
+    <div class="card hero"><div class="label">Recaudo total</div><div class="big">$${fmtCOP(totRec)}</div><div class="delta">${sec.meta?`meta $${fmtCOP(sec.meta)} · ${pctStr(totRec,sec.meta)} logrado`:(mm?mm.label:'')+' · por fuente'}</div></div>
     <div class="card"><div class="label">Inversión total</div><div class="val">$${fmtCOP(totInv)}</div><div class="delta">en pauta y eventos</div></div>
     <div class="card"><div class="label">ROAS</div><div class="val">${roas.toLocaleString('es-CO',{maximumFractionDigits:1})}</div><div class="delta">recaudo ÷ inversión</div></div>
-    <div class="card"><div class="label">Ventas</div><div class="val">${totV}</div><div class="delta">cierres del mes</div></div>`;
+    <div class="card"><div class="label">Ventas</div><div class="val">${totV}</div><div class="delta">cierres del periodo</div></div>`;
   const et=e=>{const l=e.toLowerCase();return l.includes('proceso')?'proc':(l?'ok':'');};
   const cart=sec.cartera;
   const cartRow=(cart&&(cart.rec||cart.roas||cart.inv))?`<tr class="cartera"><td>Cartera</td><td>${cart.inv?'$'+fmtCOP(cart.inv):'—'}</td><td class="rec">${cart.rec?'$'+fmtCOP(cart.rec):'—'}</td><td>${cart.roas?cart.roas.toLocaleString('es-CO',{maximumFractionDigits:1}):'—'}</td><td>${cart.ventas||'—'}</td><td>${cart.pct||'—'}</td><td>—</td></tr>`:'';
