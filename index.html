@@ -445,20 +445,23 @@
 
 <script>
 // ================== CONFIG (links directos, sin depender del consolidado) ==================
+// xlsx = archivo Excel en las carpetas de Drive (fuente real). Sin xlsx = Google Sheet histórico (personas que ya no están).
+//   Closers: https://drive.google.com/drive/folders/100OX6QwhA9xlD0Td5h_gLfum8rOfvBAO
+//   Setters: https://drive.google.com/drive/folders/1myWOg5UuAwCDsEleeIjCJpGMaKyhJLY0
 const CLOSERS=[
-  {name:"Alejandro Pulido", id:"1gDcQWO-vHZphKp0X0aRP5_diaUB_k1AqM3stIQdXrIY"},
-  {name:"Yeison Velez",     id:"1HeZqHl-jYPlv3w9IIUUxt_yA0m_9tw7GHvEPuLNHOPw"},
-  {name:"Camilo Luque",     id:"1dE5Pj5eBM4tQBmSiRaBi8q7cqUpB_YgbU7lRH72Tx9U"},
-  {name:"Wendy Ortiz",      id:"1vCHZ7MsvyZPeMjOwRb4JHgenaNAgmYzd7YKXcG1cvXg"},
-  {name:"Karen Quintero",   id:"17RnJ2-6qwm1DoYndQBvskspNWcGV4NE1K2S0WAEFMYc", since:new Date(2026,7,18)}, // solo cuenta desde el 18/08/2026 (lo anterior de su tracker se ignora)
+  {name:"Alejandro Pulido", id:"1gDcQWO-vHZphKp0X0aRP5_diaUB_k1AqM3stIQdXrIY"}, // ya no está — histórico
+  {name:"Yeison Velez",     xlsx:"1TZJuBMxs1YHUTBW4r9PZ8yAxOxfzA0UR"},
+  {name:"Camilo Luque",     id:"1dE5Pj5eBM4tQBmSiRaBi8q7cqUpB_YgbU7lRH72Tx9U"}, // ya no está — histórico
+  {name:"Wendy Ortiz",      xlsx:"1uBiMI5gDCp3QckxkJUZxtblYDf31qnyf"},
+  {name:"Karen Quintero",   xlsx:"1vjHhVeb89sToaQxvlSbOxz8DE79FOYJb", since:new Date(2026,7,18)}, // solo cuenta desde el 18/08/2026 (lo anterior de su tracker se ignora)
 ];
-const CLOSER_GID="824958696"; // pestaña "KPI´S DIARIOS CLOSER ..."
+const CLOSER_GID="824958696"; // pestaña "KPI´S DIARIOS CLOSER ..." (Google Sheet; en el Excel: "Kpi Diario Closer")
 const SETTERS=[
-  {name:"Natalia Castiblanco", id:"1SnYSXiv-PhGF7hkAPwkOFAZwFYZ0o6i5RMtn9dddFEw"},
-  {name:"Paula Fernández",     id:"1Vofr7NIgx_lynoG1U1o2U3onzraVhcYe_vECEhaEI_4", split:{from:new Date(2026,6,18), to:"Eduardo"}}, // Paula → Eduardo desde el sáb 18/07/2026 (por fecha del registro, sin tocar el histórico)
-  {name:"Carlos Pineda",       id:"1BmVzkCdIK1qvrNL_yNqANuoqUPBhjoAkxGSUszX1-L8"},
+  {name:"Natalia Castiblanco", xlsx:"1dqdTZLrmFTcyplp5Wbi7qxz5FIP936OA"},
+  {name:"Paula Fernández",     xlsx:"15zAWB_aJQAxlmSs0fBqFVLozoNb9kaIX", split:{from:new Date(2026,6,18), to:"Eduardo"}}, // archivo "TRACKER 2026 SETTER Eduardo Rojas" (heredado de Paula): Paula → Eduardo desde el sáb 18/07/2026
+  {name:"Carlos Pineda",       xlsx:"1wIJnlYbb1v-sKw_3fyHUR88x7GuAqfKz"},
 ];
-const SETTER_GID="0"; // pestaña diaria (con el nombre de la persona)
+const SETTER_GID="0"; // pestaña diaria (Google Sheet; en el Excel: "DIARIO")
 // tracker de proyección mensual + ventas por fuente
 const PROY_ID="12HorM0a3qzyZdvsucqV_15sSLZ6WgRJrNz6U5NquTrg";
 const PROY_GID="1662874272";   // "KPI's MENSUALES"
@@ -474,6 +477,12 @@ const ratioNum=v=>{const n=parseFloat(String(v).replace(/[^0-9,.-]/g,'').replace
 const isMoneyStr=s=>/\$|cop/i.test(String(s));
 
 const gvizUrl=(id,gid)=>`https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv&gid=${gid}&_=${Date.now()}`;
+// Los Excel de Drive no se pueden leer desde el navegador (Google bloquea CORS), así que
+// una GitHub Action (.github/workflows/sync-trackers.yml) los copia cada 10 min a data/trackers/<id>.csv
+function fetchTracker(t, gid){
+  if(t.xlsx) return fetch(`data/trackers/${t.xlsx}.csv?_=${Date.now()}`,{cache:'no-store'}).then(r=>r.ok?r.text():Promise.reject(r.status));
+  return fetch(gvizUrl(t.id,gid),{cache:'no-store'}).then(r=>r.ok?r.text():Promise.reject(r.status));
+}
 const rm=matchMedia('(prefers-reduced-motion:reduce)').matches;
 const grads=['linear-gradient(135deg,#ff6a2b,#ff2e8b)','linear-gradient(135deg,#ffb020,#ff6a2b)','linear-gradient(135deg,#7a5cff,#ff2e8b)','linear-gradient(135deg,#2fe08a,#12b5c9)','linear-gradient(135deg,#12b5c9,#7a5cff)','linear-gradient(135deg,#ff5a5a,#ffb020)','linear-gradient(135deg,#9b5cff,#12b5c9)'];
 const solid=['#ff6a2b','#ffb020','#7a5cff','#2fe08a','#12b5c9','#ff5a5a','#9b5cff'];
@@ -642,8 +651,7 @@ function loadMode(mode){
   const parse= mode==='closers'?parseCloser:parseSetter;
   FAILED[mode]=[];
   return Promise.all(list.map(t=>
-    fetch(gvizUrl(t.id,gid),{cache:'no-store'})
-      .then(r=>r.ok?r.text():Promise.reject(r.status))
+    fetchTracker(t,gid)
       .then(txt=>{const recs=parse(t.name,txt,t); if(!recs.length)FAILED[mode].push(t.name); return recs;})
       .catch(e=>{console.error(mode,t.name,e);FAILED[mode].push(t.name);return [];})
   )).then(all=>{DATA[mode]=all.flat();});
