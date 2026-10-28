@@ -456,23 +456,27 @@
 
 <script>
 // ================== CONFIG (links directos, sin depender del consolidado) ==================
-// xlsx = archivo Excel en las carpetas de Drive (fuente real). Sin xlsx = Google Sheet histórico (personas que ya no están).
+// xlsx = archivo Excel en las carpetas de Drive (fuente real, se lee en vivo); tab = gid de su pestaña diaria
+//   (Drive → abrir el Excel → pestaña diaria → el número después de "gid=" en la barra de direcciones).
+// Sin xlsx = Google Sheet histórico (personas que ya no están).
 //   Closers: https://drive.google.com/drive/folders/100OX6QwhA9xlD0Td5h_gLfum8rOfvBAO
 //   Setters: https://drive.google.com/drive/folders/1myWOg5UuAwCDsEleeIjCJpGMaKyhJLY0
 const CLOSERS=[
   {name:"Alejandro Pulido", id:"1gDcQWO-vHZphKp0X0aRP5_diaUB_k1AqM3stIQdXrIY"}, // ya no está — histórico
-  {name:"Yeison Velez",     xlsx:"1TZJuBMxs1YHUTBW4r9PZ8yAxOxfzA0UR"},
+  {name:"Yeison Velez",     xlsx:"1TZJuBMxs1YHUTBW4r9PZ8yAxOxfzA0UR", tab:"354510651"},
   {name:"Camilo Luque",     id:"1dE5Pj5eBM4tQBmSiRaBi8q7cqUpB_YgbU7lRH72Tx9U"}, // ya no está — histórico
-  {name:"Wendy Ortiz",      xlsx:"1uBiMI5gDCp3QckxkJUZxtblYDf31qnyf"},
-  {name:"Karen Quintero",   xlsx:"1vjHhVeb89sToaQxvlSbOxz8DE79FOYJb", since:new Date(2026,7,18)}, // solo cuenta desde el 18/08/2026 (lo anterior de su tracker se ignora)
+  {name:"Wendy Ortiz",      xlsx:"1uBiMI5gDCp3QckxkJUZxtblYDf31qnyf", tab:"1805341429"},
+  {name:"Karen Quintero",   xlsx:"1vjHhVeb89sToaQxvlSbOxz8DE79FOYJb", tab:"2064882637", since:new Date(2026,7,18)}, // solo cuenta desde el 18/08/2026 (lo anterior de su tracker se ignora)
 ];
-const CLOSER_GID="824958696"; // pestaña "KPI´S DIARIOS CLOSER ..." (Google Sheet; en el Excel: "Kpi Diario Closer")
+const CLOSER_GID="824958696";        // pestaña "KPI´S DIARIOS CLOSER ..." (Google Sheet)
+const CLOSER_TAB="Kpi Diario Closer"; // misma pestaña en el Excel
 const SETTERS=[
-  {name:"Natalia Castiblanco", xlsx:"1dqdTZLrmFTcyplp5Wbi7qxz5FIP936OA"},
-  {name:"Eduardo Rojas",       xlsx:"15zAWB_aJQAxlmSs0fBqFVLozoNb9kaIX", since:new Date(2026,6,18)}, // archivo heredado de Paula: solo cuenta desde el sáb 18/07/2026, cuando entró Eduardo
-  {name:"Carlos Pineda",       xlsx:"1wIJnlYbb1v-sKw_3fyHUR88x7GuAqfKz"},
+  {name:"Natalia Castiblanco", xlsx:"1dqdTZLrmFTcyplp5Wbi7qxz5FIP936OA", tab:"1807119384"},
+  {name:"Eduardo Rojas",       xlsx:"15zAWB_aJQAxlmSs0fBqFVLozoNb9kaIX", tab:"694793411", since:new Date(2026,6,18)}, // archivo heredado de Paula: solo cuenta desde el sáb 18/07/2026, cuando entró Eduardo
+  {name:"Carlos Pineda",       xlsx:"1wIJnlYbb1v-sKw_3fyHUR88x7GuAqfKz", tab:"810069465"},
 ];
-const SETTER_GID="0"; // pestaña diaria (Google Sheet; en el Excel: "DIARIO")
+const SETTER_GID="0";      // pestaña diaria (Google Sheet)
+const SETTER_TAB="DIARIO"; // pestaña diaria en el Excel
 // tracker de proyección mensual + ventas por fuente
 const PROY_ID="12HorM0a3qzyZdvsucqV_15sSLZ6WgRJrNz6U5NquTrg";
 const PROY_GID="1662874272";   // "KPI's MENSUALES"
@@ -488,11 +492,15 @@ const ratioNum=v=>{const n=parseFloat(String(v).replace(/[^0-9,.-]/g,'').replace
 const isMoneyStr=s=>/\$|cop/i.test(String(s));
 
 const gvizUrl=(id,gid)=>`https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv&gid=${gid}&_=${Date.now()}`;
-// Los Excel de Drive no se pueden leer desde el navegador (Google bloquea CORS), así que
-// una GitHub Action (.github/workflows/sync-trackers.yml) los copia cada 10 min a data/trackers/<id>.csv
-function fetchTracker(t, gid){
-  if(t.xlsx) return fetch(`data/trackers/${t.xlsx}.csv?_=${Date.now()}`,{cache:'no-store'}).then(r=>r.ok?r.text():Promise.reject(r.status));
-  return fetch(gvizUrl(t.id,gid),{cache:'no-store'}).then(r=>r.ok?r.text():Promise.reject(r.status));
+// Excel de Drive: se exporta la pestaña diaria como CSV, en vivo. (gviz descarta celdas de texto en
+// columnas de fechas, p. ej. "16/03/0202" mal escrito en el de Yeison; export las respeta.)
+// Si falla, se intenta por nombre de pestaña con gviz.
+const exportUrl=(id,gid)=>`https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}&_=${Date.now()}`;
+const gvizTabUrl=(id,tab)=>`https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tab)}&_=${Date.now()}`;
+const getText=u=>fetch(u,{cache:'no-store'}).then(r=>r.ok?r.text():Promise.reject(r.status));
+function fetchTracker(t, gid, tab){
+  if(t.xlsx) return getText(exportUrl(t.xlsx,t.tab)).catch(()=>getText(gvizTabUrl(t.xlsx,tab)));
+  return getText(gvizUrl(t.id,gid));
 }
 const rm=matchMedia('(prefers-reduced-motion:reduce)').matches;
 const grads=['linear-gradient(135deg,#ff6a2b,#ff2e8b)','linear-gradient(135deg,#ffb020,#ff6a2b)','linear-gradient(135deg,#7a5cff,#ff2e8b)','linear-gradient(135deg,#2fe08a,#12b5c9)','linear-gradient(135deg,#12b5c9,#7a5cff)','linear-gradient(135deg,#ff5a5a,#ffb020)','linear-gradient(135deg,#9b5cff,#12b5c9)'];
@@ -686,10 +694,11 @@ let built=false;
 function loadMode(mode){
   const list = mode==='closers'?CLOSERS:SETTERS;
   const gid  = mode==='closers'?CLOSER_GID:SETTER_GID;
+  const tab  = mode==='closers'?CLOSER_TAB:SETTER_TAB;
   const parse= mode==='closers'?parseCloser:parseSetter;
   FAILED[mode]=[];
   return Promise.all(list.map(t=>
-    fetchTracker(t,gid)
+    fetchTracker(t,gid,tab)
       .then(txt=>{const recs=parse(t.name,txt,t); if(!recs.length)FAILED[mode].push(t.name); return recs;})
       .catch(e=>{console.error(mode,t.name,e);FAILED[mode].push(t.name);return [];})
   )).then(all=>{DATA[mode]=all.flat();});
