@@ -292,7 +292,7 @@
       <div id="funnel"></div>
     </div>
     <div class="card">
-      <h2>Recaudo por mes</h2>
+      <h2 id="chartTitle">Recaudo por mes</h2>
       <div class="h2sub" id="chartSub">pesos COP</div>
       <svg id="chart" viewBox="0 0 620 240" preserveAspectRatio="none"></svg>
       <div class="xlab" id="xlab"></div>
@@ -1096,10 +1096,18 @@ function renderFunnel(stages){
 function renderChart(data){
   const by={}; data.forEach(r=>{const k=r.date.getFullYear()+'-'+String(r.date.getMonth()+1).padStart(2,'0');by[k]=(by[k]||0)+(r.recaudo||0);});
   const keys=Object.keys(by).sort(); const mN=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-  const pts=keys.map(k=>({lbl:mN[+k.slice(5)-1],v:by[k]}));
+  let pts=keys.map(k=>({lbl:mN[+k.slice(5)-1],tip:mN[+k.slice(5)-1],v:by[k]}));
   const svg=document.getElementById('chart'), xl=document.getElementById('xlab');
-  if(pts.length<2){svg.innerHTML='';xl.innerHTML='';document.getElementById('chartSub').textContent='rango de un solo mes — usa Trimestre para ver la tendencia';return;}
-  document.getElementById('chartSub').textContent='pesos COP · '+pts.length+' meses';
+  const daily=pts.length<2; // un solo mes (o menos): se muestra el recaudo día por día
+  if(daily){
+    const bd={}; data.forEach(r=>{const k=+r.date; bd[k]=(bd[k]||0)+(r.recaudo||0);});
+    pts=Object.keys(bd).map(Number).sort((a,b)=>a-b).map(t=>{const d=new Date(t); return {lbl:String(d.getDate()),tip:d.getDate()+' '+mN[d.getMonth()],v:bd[t]};});
+  }
+  document.getElementById('chartTitle').textContent=daily?'Recaudo por día':'Recaudo por mes';
+  if(pts.length<2){svg.innerHTML='';xl.innerHTML='';document.getElementById('chartSub').textContent='sin datos suficientes en este rango';return;}
+  document.getElementById('chartSub').textContent=daily
+    ? `pesos COP · ${pts[0].tip} a ${pts[pts.length-1].tip} · total $${fmtCOP(pts.reduce((a,p)=>a+p.v,0))}`
+    : 'pesos COP · '+pts.length+' meses';
   const W=620,H=240,pad=16,max=Math.max(...pts.map(p=>p.v))*1.1||1;
   const xs=i=>pad+i*((W-2*pad)/(pts.length-1)), ys=v=>H-pad-(v/max)*(H-2*pad);
   const P=pts.map((p,i)=>[xs(i),ys(p.v)]);
@@ -1112,8 +1120,9 @@ function renderChart(data){
     ${[0,.25,.5,.75,1].map(g=>`<line x1="${pad}" x2="${W-pad}" y1="${pad+g*(H-2*pad)}" y2="${pad+g*(H-2*pad)}" stroke="rgba(255,255,255,.06)"/>`).join('')}
     <path d="${area}" fill="url(#fill)"/>
     <path d="${line}" fill="none" stroke="url(#stroke)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
-    ${P.map((p,i)=>`<circle cx="${p[0]}" cy="${p[1]}" r="${i===P.length-1?5:3}" fill="${i===P.length-1?'#E83F00':'#fff'}" ${i===P.length-1?'filter="url(#glow)"':''}/>`).join('')}`;
-  xl.innerHTML=pts.map(p=>`<span>${p.lbl}</span>`).join('');
+    ${P.map((p,i)=>`<circle cx="${p[0]}" cy="${p[1]}" r="${i===P.length-1?5:(daily?2.2:3)}" fill="${i===P.length-1?'#E83F00':'#fff'}" ${i===P.length-1?'filter="url(#glow)"':''}><title>${pts[i].tip}: $${fmtCOP(pts[i].v)}</title></circle>`).join('')}`;
+  const everyX=daily?Math.ceil(pts.length/10):1; // en vista diaria, solo algunas etiquetas para que se lean
+  xl.innerHTML=pts.map((p,i)=>`<span>${i%everyX===0||i===pts.length-1?p.lbl:''}</span>`).join('');
 }
 
 // ================== RENDER PROYECCIÓN ==================
