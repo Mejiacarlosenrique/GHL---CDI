@@ -475,6 +475,7 @@ const CLOSERS=[
   {name:"Camilo Luque",     id:"1dE5Pj5eBM4tQBmSiRaBi8q7cqUpB_YgbU7lRH72Tx9U"}, // ya no está — histórico
   {name:"Wendy Ortiz",      xlsx:"1uBiMI5gDCp3QckxkJUZxtblYDf31qnyf", tab:"1805341429"},
   {name:"Karen Quintero",   xlsx:"1vjHhVeb89sToaQxvlSbOxz8DE79FOYJb", tab:"2064882637", since:new Date(2026,7,18)}, // solo cuenta desde el 18/08/2026 (lo anterior de su tracker se ignora)
+  {name:"Lewin",            xlsx:"1Pu8d2C4rjunipJ0oxTie1woVY7-7vyX6", tab:"2064882637"}, // entró el 09/11/2026
 ];
 const CLOSER_GID="824958696";        // pestaña "KPI´S DIARIOS CLOSER ..." (Google Sheet)
 const CLOSER_TAB="Kpi Diario Closer"; // misma pestaña en el Excel
@@ -1258,6 +1259,7 @@ function finCloser(raw){
   if(l.includes('wendy'))return 'Wendy Ortiz';
   if(l.includes('carlosmejia'))return 'Carlos Mejía';
   if(l.includes('karen'))return 'Karen Quintero';
+  if(l.includes('lewin'))return 'Lewin';
   return null; // excluido
 }
 const finMoney=v=>{const d=String(v).split(',')[0].replace(/[^0-9-]/g,'');return d&&d!=='-'?parseInt(d,10):0;};
@@ -1299,7 +1301,7 @@ function parseFinanzas(hvTxt, srTxt){
     });
     arr.forEach((tr,i)=>{tr.esCuota=i>0;});
   });
-  const ORDER=['Alejandro Pulido','Camilo Luque','Yeison Velez','Wendy Ortiz','Carlos Mejía','Karen Quintero'];
+  const ORDER=['Alejandro Pulido','Camilo Luque','Yeison Velez','Wendy Ortiz','Carlos Mejía','Karen Quintero','Lewin'];
   const closers=ORDER.filter(c=>Object.values(ventas).some(v=>v.closer===c));
   return {ventas, trans, closers};
 }
@@ -1414,7 +1416,7 @@ function renderFinConcil(){
     if(esPromesa) b.promesa+=v.pactado; else b.vendido+=v.pactado; });
   finTransPeriodo().forEach(tr=>{ if(estadoClass(tr.estado)==='devolucion')return; const b=get(tr.closer); b.recaudado+=tr.valor;
     if(estadoClass(tr.estado)==='facturado') b.facturado+=tr.valor; else b.faltaFact+=tr.valor; });
-  const ORD=['Yeison Velez','Alejandro Pulido','Wendy Ortiz','Karen Quintero','Camilo Luque','Carlos Mejía'];
+  const ORD=['Yeison Velez','Alejandro Pulido','Wendy Ortiz','Karen Quintero','Camilo Luque','Carlos Mejía','Lewin'];
   const list=ORD.filter(c=>by[c]).map(c=>({n:c,...by[c]}));
   if(!list.length){el.innerHTML='<tbody><tr><td class="empty">Sin datos en el periodo.</td></tr></tbody>';kp.innerHTML='';nota.textContent='';return;}
   const T=k=>list.reduce((s,x)=>s+(x[k]||0),0);
